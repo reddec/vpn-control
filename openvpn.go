@@ -6,6 +6,8 @@ import (
 	"text/template"
 	"os"
 	"errors"
+	"io/ioutil"
+	"strings"
 )
 
 const vpnConf = `{{with .LocalAddr}}local {{.}}{{end}}
@@ -74,6 +76,33 @@ func (ovpn OpenVPNServer) BaseCACertFile() string {
 	return path.Base(ovpn.Keys.CACert)
 }
 
+func (ovpn OpenVPNServer) AddStaticIP(client string, ip string) error {
+	f, err := os.OpenFile(ovpn.PersistIPFile, os.O_APPEND | os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if _, err = f.WriteString(client + "," + ip); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (ovpn OpenVPNServer) ListStaticIP() (map[string]string, error) {
+	data, err := ioutil.ReadFile(ovpn.PersistIPFile)
+	if err != nil {
+		return nil, err
+	}
+	ips := make(map[string]string)
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		kv := strings.Split(line, ",")
+		if len(kv) == 2 {
+			ips[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+		}
+	}
+	return ips, nil
+}
 
 func (ovpn OpenVPNServer) CheckRequiredFields() error {
 	if ovpn.Port == 0 {
@@ -98,8 +127,17 @@ func (ovpn OpenVPNServer) InitialConfig(targetDir string) error {
 			return err
 		}
 		ovpn.PersistIPFile = ipp
+		f, err := os.Create(ovpn.PersistIPFile)
+		if err != nil {
+			return err
+		}
+		f.Close()
 	}
 	target, err := filepath.Abs(targetDir)
+	if err != nil {
+		return err
+	}
+	err = os.MkdirAll(target, 0755)
 	if err != nil {
 		return err
 	}

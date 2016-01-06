@@ -67,6 +67,28 @@ func TestOVPNBadKeysInitialConfig(t *testing.T) {
 	}
 }
 
+func TestOVPNAddAndCheckStaticIP(t *testing.T) {
+	os.RemoveAll("test")
+	_, ovpn, err := BuildSimpleDebian("my.local", "test")
+	if err != nil {
+		t.Fatal("Create initial config without TLS", err)
+	}
+	if _, err := os.Stat("test/server.conf"); os.IsNotExist(err) {
+		t.Error("Server configuration not created")
+	}
+	err = ovpn.AddStaticIP("client", "10.1.2.3")
+	if err != nil {
+		t.Fatal("Failed add static ip", err)
+	}
+	list, err := ovpn.ListStaticIP()
+	if err != nil {
+		t.Fatal("Failed list static ips", err)
+	}
+	if ip := list["client"]; ip != "10.1.2.3" {
+		t.Fatal("Static ip not added")
+	}
+}
+
 func TestOVPNClientConfig(t *testing.T) {
 	os.RemoveAll("test")
 	server := getTestOVPNServer()

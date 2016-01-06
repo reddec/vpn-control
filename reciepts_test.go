@@ -9,7 +9,7 @@ const testReceiptsDir = "test/reciepts"
 func TestBuildSimpleDebian(t *testing.T) {
 	os.RemoveAll(testReceiptsDir)
 	defer os.RemoveAll(testReceiptsDir)
-	err := BuildSimpleDebian("test.local", testReceiptsDir)
+	_, _, err := BuildSimpleDebian("test.local", testReceiptsDir)
 	if err != nil {
 		t.Fatal("Receipt: simple debian", err)
 	}
@@ -31,4 +31,21 @@ func TestBuildSimpleDebian(t *testing.T) {
 	if _, err := os.Stat(path.Join(testReceiptsDir, "keys", "test.local.key")); os.IsNotExist(err) {
 		t.Error("Server key not created")
 	}
+}
+
+func TestBuildSimpleClient(t *testing.T) {
+	os.RemoveAll(testReceiptsDir)
+	rsa, ovpn, err := BuildSimpleDebian("my.local", testReceiptsDir)
+	if err != nil {
+		t.Fatal("Receipt: simple debian", err)
+	}
+	archive, err := BuildClientArchive("ivan", ovpn, rsa, "127.0.0.1")
+	if err != nil {
+		t.Fatal("Receipt: simple client", err)
+	}
+	if _, err := os.Stat(archive); os.IsNotExist(err) {
+		t.Error("Client archive not created")
+	}
+	t.Log("Archive created in", archive)
+
 }
