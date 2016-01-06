@@ -2,6 +2,8 @@ package vpnc
 import (
 	"testing"
 	"os"
+	"io/ioutil"
+	"bytes"
 )
 
 func getTestOVPNServer() OpenVPNServer {
@@ -47,6 +49,113 @@ func TestOVPNInitialTLSConfig(t *testing.T) {
 		t.Error("Server configuration not created")
 	}
 }
+
+func TestOVPNOpenConfig(t *testing.T) {
+	ovpn := getTestOVPNServer()
+	if err := ovpn.BuildTLSKey("test/keys"); err != nil {
+		t.Fatal("Create TLS key", err)
+	}
+	if err := ovpn.InitialConfig("test"); err != nil {
+		t.Fatal("Create initial config with TLS", err)
+	}
+	if _, err := os.Stat("test/server.conf"); os.IsNotExist(err) {
+		t.Error("Server configuration not created")
+	}
+	ovpn, err := OpenServerConf("test/server.conf")
+	if err != nil {
+		t.Fatal("Open server config", err)
+	}
+	t.Logf("Loaded %+v", ovpn)
+	if err = ovpn.CheckRequiredFields(); err != nil {
+		t.Fatal("Check server config", err)
+	}
+	if ovpn.Port != 1194 {
+		t.Error("Loaded bad port")
+	}
+	if ovpn.Protocol != "tcp" {
+		t.Error("Loaded bad protocol")
+	}
+
+}
+
+func TestOVPNOpenSameConfig(t *testing.T) {
+	ovpn := getTestOVPNServer()
+	if err := ovpn.BuildTLSKey("test/keys"); err != nil {
+		t.Fatal("Create TLS key", err)
+	}
+	if err := ovpn.InitialConfig("test"); err != nil {
+		t.Fatal("Create initial config with TLS", err)
+	}
+	if _, err := os.Stat("test/server.conf"); os.IsNotExist(err) {
+		t.Error("Server configuration not created")
+	}
+	// Store old config
+	txtOrig, err := ioutil.ReadFile("test/server.conf")
+	if err != nil {
+		t.Fatal("Can't read generated config")
+	}
+
+	// Open and generate new conf
+	ovpn2, err := OpenServerConf("test/server.conf")
+	if err != nil {
+		t.Fatal("Open server config", err)
+	}
+	if err = os.RemoveAll("test"); err != nil {
+		t.Fatal("Can't remove old config")
+	}
+	if err := ovpn2.InitialConfig("test"); err != nil {
+		t.Fatal("Create initial config with loaded params", err)
+	}
+	// Get new config
+	txtNew, err := ioutil.ReadFile("test/server.conf")
+	if err != nil {
+		t.Fatal("Can't read new generated config")
+	}
+	if !bytes.Equal(txtOrig, txtNew) {
+		t.Fatal("New and generated config have different content. EPIC error!")
+	}
+}
+
+
+func TestOVPNOpenNotSameConfig(t *testing.T) {
+	ovpn := getTestOVPNServer()
+	if err := ovpn.BuildTLSKey("test/keys"); err != nil {
+		t.Fatal("Create TLS key", err)
+	}
+	if err := ovpn.InitialConfig("test"); err != nil {
+		t.Fatal("Create initial config with TLS", err)
+	}
+	if _, err := os.Stat("test/server.conf"); os.IsNotExist(err) {
+		t.Error("Server configuration not created")
+	}
+	// Store old config
+	txtOrig, err := ioutil.ReadFile("test/server.conf")
+	if err != nil {
+		t.Fatal("Can't read generated config")
+	}
+	// Open and generate new conf
+	ovpn2, err := OpenServerConf("test/server.conf")
+	if err != nil {
+		t.Fatal("Open server config", err)
+	}
+	ovpn2.Port = 1195
+	if err = os.RemoveAll("test"); err != nil {
+		t.Fatal("Can't remove old config")
+	}
+	if err := ovpn2.InitialConfig("test"); err != nil {
+		t.Fatal("Create initial config with loaded params", err)
+	}
+	// Get new config
+	txtNew, err := ioutil.ReadFile("test/server.conf")
+	if err != nil {
+		t.Fatal("Can't read new generated config")
+	}
+	if bytes.Equal(txtOrig, txtNew) {
+		t.Fatal("New and generated config must have different content. EPIC error!")
+	}
+}
+
+
 
 func TestOVPNBadPortInitialConfig(t *testing.T) {
 	defer os.RemoveAll("test")

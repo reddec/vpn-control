@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"strings"
+	"strconv"
 )
 
 const vpnConf = `{{with .LocalAddr}}local {{.}}{{end}}
@@ -141,6 +142,10 @@ func (ovpn OpenVPNServer) InitialConfig(targetDir string) error {
 		if err != nil {
 			return err
 		}
+		err = os.MkdirAll(filepath.Dir(ipp), 0755)
+		if err != nil {
+			return err
+		}
 		ovpn.PersistIPFile = ipp
 		f, err := os.Create(ovpn.PersistIPFile)
 		if err != nil {
@@ -236,4 +241,48 @@ func (ovpn OpenVPNServer) BuildClientConf(targetDir string, clientCert, clientKe
 	params.ClientCertFile = path.Base(clientCert)
 	params.ClientKeyFile = path.Base(clientKey)
 	return templ.Execute(f, params)
+}
+
+// Read necessary parameters from OpenSSL server configuration file
+func OpenServerConf(serverConf string) (OpenVPNServer, error) {
+	server := OpenVPNServer{}
+	content, err := ioutil.ReadFile(serverConf)
+	if err != nil {
+		return server, err
+	}
+	lines := strings.Split(string(content), "\n")
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || line[0] == '#' || line[0] == ';' {
+			continue
+		}
+		if line == "client-to-client" {
+			server.ClientToClient = true
+			continue
+		}
+
+		kv := strings.SplitN(line, " ", 2)
+		if len(kv) < 2 {
+			continue
+		}
+		val := strings.TrimSpace(kv[1])
+		switch strings.TrimSpace(kv[0]) {
+		case "port":
+			prt, err := strconv.ParseUint(val, 10, 16)
+			if err != nil {
+				return server, err
+			}
+			server.Port = uint16(prt)
+		case "proto": server.Protocol = val
+		case "local": server.LocalAddr = val
+		case "ca": server.Keys.CA.Certificate = val
+		case "cert": server.Keys.Server.Certificate = val
+		case "key": server.Keys.Server.Key = val
+		case "dh": server.Keys.DiffieHellman = val
+		case "ifconfig-pool-persist": server.PersistIPFile = val
+		case "tls-auth": server.TlsKey = strings.Split(val, " ")[0] //Chop direction
+		}
+	}
+	return server, nil
 }
