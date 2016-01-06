@@ -1,4 +1,4 @@
-package vpn_control
+package vpnc
 import "time"
 
 type Server struct {
