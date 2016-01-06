@@ -53,7 +53,7 @@ func BuildClientArchive(name string, ovpn OpenVPNServer, rsa EasyRSA, publicAddr
 		return "", err
 	}
 	ovpn.Addresses = publicAddresses
-	err = ovpn.BuildClientConf(dir, files.Certificate, files.Key)
+	err = ovpn.BuildClientConf(dir, files.Files.Certificate, files.Files.Key)
 	if err != nil {
 		return "", err
 	}

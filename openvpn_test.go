@@ -98,11 +98,11 @@ func TestOVPNClientConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal("Build server keys", err)
 	}
-	keys, err := rsa.BuildClientKeys("ivan")
+	client, err := rsa.BuildClientKeys("ivan")
 	if err != nil {
 		t.Fatal("Build client keys", err)
 	}
-	err = server.BuildClientConf("test/ivan", keys.Certificate, keys.Key)
+	err = server.BuildClientConf("test/ivan", client.Files.Certificate, client.Files.Key)
 	if err != nil {
 		t.Fatal("Build client config", err)
 	}

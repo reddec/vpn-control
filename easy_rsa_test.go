@@ -73,15 +73,15 @@ func TestBuildClientKey(t *testing.T) {
 	if err != nil {
 		t.Fatal("Build CA key", err)
 	}
-	files, err := r.BuildClientKeys("ivan")
+	client, err := r.BuildClientKeys("ivan")
 	if err != nil {
 		t.Fatal("Build client key for ivan", err)
 	}
 
-	if _, err := os.Stat(files.Certificate); os.IsNotExist(err) {
+	if _, err := os.Stat(client.Files.Certificate); os.IsNotExist(err) {
 		t.Error("Client certificate not created")
 	}
-	if _, err := os.Stat(files.Key); os.IsNotExist(err) {
+	if _, err := os.Stat(client.Files.Key); os.IsNotExist(err) {
 		t.Error("Client key not created")
 	}
 }
@@ -126,17 +126,17 @@ func TestBuildAllRSAKeys(t *testing.T) {
 
 func TestGetKeyFiles(t *testing.T) {
 	keys := getInstance().KeyFiles()
-	if path.Base(keys.CACert) != "ca.crt" {
-		t.Error("Invalid CA cert file name", keys.CACert)
+	if path.Base(keys.CA.Certificate) != "ca.crt" {
+		t.Error("Invalid CA cert file name", keys.CA.Certificate)
 	}
-	if path.Base(keys.CAKey) != "ca.key" {
-		t.Error("Invalid CA key file name", keys.CAKey)
+	if path.Base(keys.CA.Key) != "ca.key" {
+		t.Error("Invalid CA key file name", keys.CA.Key)
 	}
-	if path.Base(keys.ServerCert) != "test.local.crt" {
-		t.Error("Invalid server cert file name", keys.ServerCert)
+	if path.Base(keys.Server.Certificate) != "test.local.crt" {
+		t.Error("Invalid server cert file name", keys.Server.Certificate)
 	}
-	if path.Base(keys.ServerKey) != "test.local.key" {
-		t.Error("Invalid server key file name", keys.ServerKey)
+	if path.Base(keys.Server.Key) != "test.local.key" {
+		t.Error("Invalid server key file name", keys.Server.Key)
 	}
 	if path.Base(keys.DiffieHellman) != "dh2048.pem" {
 		t.Error("Invalid Diffie-Hellman file name", keys.DiffieHellman)

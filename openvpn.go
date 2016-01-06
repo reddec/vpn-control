@@ -14,9 +14,9 @@ const vpnConf = `{{with .LocalAddr}}local {{.}}{{end}}
 port  {{.Port}}
 proto {{.Protocol}}
 dev tun
-ca   {{.Keys.CACert}}
-cert {{.Keys.ServerCert}}
-key  {{.Keys.ServerKey}}
+ca   {{.Keys.CA.Certificate}}
+cert {{.Keys.Server.Certificate}}
+key  {{.Keys.Server.Key}}
 dh   {{.Keys.DiffieHellman}}
 server 10.8.0.0 255.255.255.0
 {{with .PersistIPFile}}ifconfig-pool-persist {{.}}{{end}}
@@ -72,8 +72,9 @@ type OpenVPNServer struct {
 func (ovpn OpenVPNServer) BaseTLSKeyFile() string {
 	return path.Base(ovpn.TlsKey)
 }
+
 func (ovpn OpenVPNServer) BaseCACertFile() string {
-	return path.Base(ovpn.Keys.CACert)
+	return path.Base(ovpn.Keys.CA.Certificate)
 }
 
 func (ovpn OpenVPNServer) AddStaticIP(client string, ip string) error {
@@ -111,7 +112,7 @@ func (ovpn OpenVPNServer) CheckRequiredFields() error {
 	if ovpn.Protocol != "udp" && ovpn.Protocol != "tcp" {
 		return errors.New("Unknown protocol " + ovpn.Protocol + ": must be udp or tcp")
 	}
-	if ovpn.Keys.CACert == "" || ovpn.Keys.ServerKey == "" || ovpn.Keys.DiffieHellman == "" || ovpn.Keys.ServerCert == "" {
+	if ovpn.Keys.CA.Certificate == "" || ovpn.Keys.Server.Key == "" || ovpn.Keys.DiffieHellman == "" || ovpn.Keys.Server.Certificate == "" {
 		return errors.New("CA cert, Server key/cert and Diffie-Hellman pem must be")
 	}
 	return nil
@@ -186,11 +187,11 @@ func (ovpn OpenVPNServer) BuildClientConf(targetDir string, clientCert, clientKe
 	if err != nil {
 		return err
 	}
-	err = os.Link(ovpn.Keys.ServerCert, path.Join(targetDir, path.Base(ovpn.Keys.ServerCert)))
+	err = os.Link(ovpn.Keys.Server.Certificate, path.Join(targetDir, path.Base(ovpn.Keys.Server.Certificate)))
 	if err != nil {
 		return err
 	}
-	err = os.Link(ovpn.Keys.CACert, path.Join(targetDir, path.Base(ovpn.Keys.CACert)))
+	err = os.Link(ovpn.Keys.CA.Certificate, path.Join(targetDir, path.Base(ovpn.Keys.CA.Certificate)))
 	if err != nil {
 		return err
 	}

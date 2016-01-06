@@ -10,13 +10,13 @@ import (
 )
 
 type EasyRSA struct {
-	BinDir       string
-	KeyDir       string
+	BinDir       string // Home of easy-rsa tools
+	KeyDir       string // Location of key files
 
-	KeySize      int
-	CaExpire     int
-	KeyExpire    int
-	Server       string
+	KeySize      int    // Diffie-Hellman key size
+	CaExpire     int    // CA expires in day
+	KeyExpire    int    // Server key expires in day
+	Server       string // Server name
 	Province     string
 	CountryCode  string
 	City         string
@@ -25,19 +25,21 @@ type EasyRSA struct {
 	Email        string
 }
 
+type KeyPair struct {
+	Certificate string // Location of certificate file
+	Key         string // Location of key file
+}
+
 type KeyFiles struct {
-	ServerCert    string
-	ServerKey     string
-	CACert        string
-	CAKey         string
-	DiffieHellman string
+	Server        KeyPair // Certificate and key for server
+	CA            KeyPair // Certificate and key for CA
+	DiffieHellman string  // Location of Diffie-Hellman key (typically dh2048.pem or dh1024.pen)
 }
 
 type ClientKeyFiles struct {
-	Name           string
-	Certificate    string
-	Key            string
-	SigningRequest string
+	Files          KeyPair
+	Name           string // Client name
+	SigningRequest string // Certification sign request (optionally, for future use)
 }
 
 func (er EasyRSA) whichOpenSLLCNF() (string, error) {
@@ -55,6 +57,7 @@ func (er EasyRSA) whichOpenSLLCNF() (string, error) {
 	return "", errors.New("No cnf file could be found")
 }
 
+// Home directory of easy-rsa tools. Returns default Debian location if not present
 func (er EasyRSA) HomeDir() string {
 	if er.BinDir != "" {
 		v, _ := filepath.Abs(er.BinDir)
@@ -64,6 +67,7 @@ func (er EasyRSA) HomeDir() string {
 	return v
 }
 
+// Target directory for keys
 func (er EasyRSA) KeysDir() string {
 	if er.KeyDir != "" {
 		v, _ := filepath.Abs(er.KeyDir)
@@ -72,17 +76,21 @@ func (er EasyRSA) KeysDir() string {
 	return path.Join(er.HomeDir(), "keys")
 }
 
+// Path to pkitool executable
 func (er EasyRSA) PkiTool() string {
 	return path.Join(er.HomeDir(), "pkitool")
 }
 
+// Generate list of all path to all generating keys
 func (er EasyRSA) KeyFiles() KeyFiles {
 	return KeyFiles{
-		CACert : path.Join(er.KeysDir(), "ca.crt"),
-		CAKey: path.Join(er.KeysDir(), "ca.key"),
 		DiffieHellman : path.Join(er.KeysDir(), "dh" + strconv.Itoa(er.KeySize) + ".pem"),
-		ServerCert : path.Join(er.KeysDir(), er.Server + ".crt"),
-		ServerKey : path.Join(er.KeysDir(), er.Server + ".key"),
+		CA : KeyPair{
+			Certificate:path.Join(er.KeysDir(), "ca.crt"),
+			Key:path.Join(er.KeysDir(), "ca.key")},
+		Server : KeyPair{
+			Certificate:path.Join(er.KeysDir(), er.Server + ".crt"),
+			Key:path.Join(er.KeysDir(), er.Server + ".key")},
 	}
 }
 
@@ -130,18 +138,29 @@ func (er EasyRSA) pkitool(args ...string) error {
 	return er.runWithEnv(er.PkiTool(), args...)
 }
 
+// Removes all in keys directory and initialize again
 func (er EasyRSA) CleanAll() error {
 	return er.runWithEnv(path.Join(er.HomeDir(), "clean-all"))
 }
 
+// Make a certificate/private key pair using a locally generated
+// root certificate.
+//
+// Explicitly set nsCertType to server using the "server"
+// extension in the openssl.cnf file.
 func (er EasyRSA) BuildKeyServer() error {
 	return er.pkitool("--server", er.Server)
 }
 
+// Make a certificate/private key pair using a locally generated
+// root certificate.
+//
+// Returns list of all generated files
 func (er EasyRSA) BuildClientKeys(name string) (ClientKeyFiles, error) {
 	keys := ClientKeyFiles{Name:name,
-		Certificate:path.Join(er.KeysDir(), name + ".crt"),
-		Key:path.Join(er.KeysDir(), name + ".key"),
+		Files: KeyPair{
+			Certificate:path.Join(er.KeysDir(), name + ".crt"),
+			Key:path.Join(er.KeysDir(), name + ".key")},
 		SigningRequest:path.Join(er.KeysDir(), name + ".csr"),
 	}
 	err := os.MkdirAll(er.KeysDir(), 0755)
@@ -152,15 +171,16 @@ func (er EasyRSA) BuildClientKeys(name string) (ClientKeyFiles, error) {
 	if err != nil {
 		return keys, err
 	}
-	if _, err = os.Stat(keys.Certificate); err != nil {
+	if _, err = os.Stat(keys.Files.Certificate); err != nil {
 		return keys, err
 	}
-	if _, err = os.Stat(keys.Key); err != nil {
+	if _, err = os.Stat(keys.Files.Key); err != nil {
 		return keys, err
 	}
 	return keys, nil
 }
 
+// Build a root certificate
 func (er EasyRSA) BuildKeyCa() error {
 	err := er.pkitool("--initca")
 	if err != nil {
@@ -175,10 +195,13 @@ func (er EasyRSA) BuildKeyCa() error {
 	return nil
 }
 
+// Build Diffie-Hellman parameters for the server side
+// of an SSL/TLS connection.
 func (er EasyRSA) BuildDH() error {
 	return er.runWithEnv(path.Join(er.HomeDir(), "build-dh"))
 }
 
+// Clean all and generate CA, server and Diffie-Hellman keys
 func (er EasyRSA) BuildAllServerKeys() error {
 	if err := os.MkdirAll(er.KeysDir(), 0755); err != nil {
 		return err
