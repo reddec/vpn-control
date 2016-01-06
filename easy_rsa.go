@@ -144,7 +144,11 @@ func (er EasyRSA) BuildClientKeys(name string) (ClientKeyFiles, error) {
 		Key:path.Join(er.KeysDir(), name + ".key"),
 		SigningRequest:path.Join(er.KeysDir(), name + ".csr"),
 	}
-	err := er.pkitool(name)
+	err := os.MkdirAll(er.KeysDir(), 0755)
+	if err != nil {
+		return keys, err
+	}
+	err = er.pkitool(name)
 	if err != nil {
 		return keys, err
 	}
@@ -158,7 +162,17 @@ func (er EasyRSA) BuildClientKeys(name string) (ClientKeyFiles, error) {
 }
 
 func (er EasyRSA) BuildKeyCa() error {
-	return er.pkitool("--initca")
+	err := er.pkitool("--initca")
+	if err != nil {
+		return err
+	}
+	if _, err = os.Stat(path.Join(er.KeysDir(), "ca.crt")); err != nil {
+		return errors.New("CA certificate not created")
+	}
+	if _, err = os.Stat(path.Join(er.KeysDir(), "ca.key")); err != nil {
+		return errors.New("CA key not created")
+	}
+	return nil
 }
 
 func (er EasyRSA) BuildDH() error {

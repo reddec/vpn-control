@@ -121,6 +121,14 @@ func (ovpn OpenVPNServer) InitialConfig(targetDir string) error {
 	if err := ovpn.CheckRequiredFields(); err != nil {
 		return err
 	}
+	target, err := filepath.Abs(targetDir)
+	if err != nil {
+		return err
+	}
+	err = os.MkdirAll(target, 0755)
+	if err != nil {
+		return err
+	}
 	if ovpn.PersistIPFile != "" {
 		ipp, err := filepath.Abs(ovpn.PersistIPFile)
 		if err != nil {
@@ -132,14 +140,6 @@ func (ovpn OpenVPNServer) InitialConfig(targetDir string) error {
 			return err
 		}
 		f.Close()
-	}
-	target, err := filepath.Abs(targetDir)
-	if err != nil {
-		return err
-	}
-	err = os.MkdirAll(target, 0755)
-	if err != nil {
-		return err
 	}
 	target = path.Join(target, "server.conf")
 	templ, err := template.New("").Parse(vpnConf)
@@ -156,6 +156,10 @@ func (ovpn OpenVPNServer) InitialConfig(targetDir string) error {
 
 func (ovpn *OpenVPNServer) BuildTLSKey(keysDir string) error {
 	v, err := filepath.Abs(keysDir)
+	if err != nil {
+		return err
+	}
+	err = os.MkdirAll(keysDir, 0755)
 	if err != nil {
 		return err
 	}

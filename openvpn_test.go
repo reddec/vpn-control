@@ -16,6 +16,7 @@ func getTestOVPNServer() OpenVPNServer {
 }
 
 func TestOVPNBuildTLSKey(t *testing.T) {
+
 	ovpn := getTestOVPNServer()
 	err := ovpn.BuildTLSKey("test/keys")
 	if err != nil {

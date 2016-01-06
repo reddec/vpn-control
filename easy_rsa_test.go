@@ -28,6 +28,8 @@ func TestGetEnv(t *testing.T) {
 }
 
 func TestCleanAll(t *testing.T) {
+	os.RemoveAll("test")
+	os.MkdirAll("test", 0755)
 	r := getInstance()
 	err := r.CleanAll()
 	if err != nil {
@@ -35,6 +37,8 @@ func TestCleanAll(t *testing.T) {
 	}
 }
 func TestBuildCA(t *testing.T) {
+	os.MkdirAll("test", 0755)
+	defer os.RemoveAll("test")
 	defer os.RemoveAll(getInstance().KeysDir())
 	TestCleanAll(t)
 	r := getInstance()
@@ -44,6 +48,8 @@ func TestBuildCA(t *testing.T) {
 	}
 }
 func TestBuildServerKey(t *testing.T) {
+	os.MkdirAll("test", 0755)
+	defer os.RemoveAll("test")
 	defer os.RemoveAll(getInstance().KeysDir())
 	TestCleanAll(t)
 	r := getInstance()
@@ -58,6 +64,8 @@ func TestBuildServerKey(t *testing.T) {
 }
 
 func TestBuildClientKey(t *testing.T) {
+	os.MkdirAll("test", 0755)
+	defer os.RemoveAll("test")
 	defer os.RemoveAll(getInstance().KeysDir())
 	TestCleanAll(t)
 	r := getInstance()
@@ -89,6 +97,8 @@ func TestBuildDH(t *testing.T) {
 }
 
 func TestBuildAllRSAKeys(t *testing.T) {
+	os.MkdirAll("test", 0755)
+	defer os.RemoveAll("test")
 	defer os.RemoveAll(getInstance().KeysDir())
 	err := getInstance().BuildAllServerKeys()
 	if err != nil {
