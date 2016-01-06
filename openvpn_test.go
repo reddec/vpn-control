@@ -8,6 +8,7 @@ func getTestOVPNServer() OpenVPNServer {
 	return OpenVPNServer{
 		ClientToClient:true,
 		Protocol:"tcp",
+		Addresses:[]string{"127.0.0.1", "10.0.0.1"},
 		Port:1194,
 		PersistIPFile:"test/keys/ipp.txt",
 		Keys: getInstance().KeyFiles(),
@@ -47,6 +48,7 @@ func TestOVPNInitialTLSConfig(t *testing.T) {
 }
 
 func TestOVPNBadPortInitialConfig(t *testing.T) {
+	defer os.RemoveAll("test")
 	ovpn := getTestOVPNServer()
 	ovpn.Port = 0
 	err := ovpn.InitialConfig("test")
@@ -56,10 +58,29 @@ func TestOVPNBadPortInitialConfig(t *testing.T) {
 }
 
 func TestOVPNBadKeysInitialConfig(t *testing.T) {
+	defer os.RemoveAll("test")
 	ovpn := getTestOVPNServer()
 	ovpn.Keys = KeyFiles{}
 	err := ovpn.InitialConfig("test")
 	if err == nil {
 		t.Fatal("Check keys failed")
+	}
+}
+
+func TestOVPNClientConfig(t *testing.T) {
+	os.RemoveAll("test")
+	server := getTestOVPNServer()
+	rsa := getInstance()
+	err := rsa.BuildAllServerKeys()
+	if err != nil {
+		t.Fatal("Build server keys", err)
+	}
+	keys, err := rsa.BuildClientKeys("ivan")
+	if err != nil {
+		t.Fatal("Build client keys", err)
+	}
+	err = server.BuildClientConf("test/ivan", keys.Certificate, keys.Key)
+	if err != nil {
+		t.Fatal("Build client config", err)
 	}
 }

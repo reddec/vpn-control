@@ -33,6 +33,13 @@ type KeyFiles struct {
 	DiffieHellman string
 }
 
+type ClientKeyFiles struct {
+	Name           string
+	Certificate    string
+	Key            string
+	SigningRequest string
+}
+
 func (er EasyRSA) whichOpenSLLCNF() (string, error) {
 	out, err := exec.Command("openssl", "version").Output()
 	if err != nil {
@@ -131,6 +138,25 @@ func (er EasyRSA) BuildKeyServer() error {
 	return er.pkitool("--server", er.Server)
 }
 
+func (er EasyRSA) BuildClientKeys(name string) (ClientKeyFiles, error) {
+	keys := ClientKeyFiles{Name:name,
+		Certificate:path.Join(er.KeysDir(), name + ".crt"),
+		Key:path.Join(er.KeysDir(), name + ".key"),
+		SigningRequest:path.Join(er.KeysDir(), name + ".csr"),
+	}
+	err := er.pkitool(name)
+	if err != nil {
+		return keys, err
+	}
+	if _, err = os.Stat(keys.Certificate); err != nil {
+		return keys, err
+	}
+	if _, err = os.Stat(keys.Key); err != nil {
+		return keys, err
+	}
+	return keys, nil
+}
+
 func (er EasyRSA) BuildKeyCa() error {
 	return er.pkitool("--initca")
 }
@@ -139,7 +165,7 @@ func (er EasyRSA) BuildDH() error {
 	return er.runWithEnv(path.Join(er.HomeDir(), "build-dh"))
 }
 
-func (er EasyRSA) BuildAllRSAKeys() error {
+func (er EasyRSA) BuildAllServerKeys() error {
 	if err := os.MkdirAll(er.KeysDir(), 0755); err != nil {
 		return err
 	}

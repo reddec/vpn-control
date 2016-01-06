@@ -51,10 +51,30 @@ func TestBuildServerKey(t *testing.T) {
 	if err != nil {
 		t.Fatal("Build CA key", err)
 	}
-	TestBuildCA(t)
 	err = r.BuildKeyServer()
 	if err != nil {
 		t.Fatal("Build server key", err)
+	}
+}
+
+func TestBuildClientKey(t *testing.T) {
+	defer os.RemoveAll(getInstance().KeysDir())
+	TestCleanAll(t)
+	r := getInstance()
+	err := r.BuildKeyCa()
+	if err != nil {
+		t.Fatal("Build CA key", err)
+	}
+	files, err := r.BuildClientKeys("ivan")
+	if err != nil {
+		t.Fatal("Build client key for ivan", err)
+	}
+
+	if _, err := os.Stat(files.Certificate); os.IsNotExist(err) {
+		t.Error("Client certificate not created")
+	}
+	if _, err := os.Stat(files.Key); os.IsNotExist(err) {
+		t.Error("Client key not created")
 	}
 }
 
@@ -70,7 +90,7 @@ func TestBuildDH(t *testing.T) {
 
 func TestBuildAllRSAKeys(t *testing.T) {
 	defer os.RemoveAll(getInstance().KeysDir())
-	err := getInstance().BuildAllRSAKeys()
+	err := getInstance().BuildAllServerKeys()
 	if err != nil {
 		t.Fatal("Build all keys", err)
 	}

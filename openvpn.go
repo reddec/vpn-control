@@ -28,8 +28,37 @@ status openvpn-status.log
 verb 3
 `
 
+const clientConf = `client
+dev tun
+proto {{.Protocol}}
+
+{{range .Addresses}}
+remote {{.}} {{$.Port}}{{end}}
+
+resolv-retry infinite
+
+ca {{.BaseCACertFile}}
+cert {{.ClientCertFile}}
+key {{.ClientKeyFile}}
+{{if .TlsKey}}
+tls-client
+tls-auth {{.BaseTLSKeyFile}} 1
+auth SHA1
+cipher BF-CBC
+remote-cert-tls server
+{{end}}
+comp-lzo
+persist-key
+persist-tun
+
+status openvpn-status.log
+log /var/log/openvpn.log
+verb 3
+mute 20`
+
 type OpenVPNServer struct {
 	LocalAddr      string
+	Addresses      []string
 	Port           uint16
 	Protocol       string
 	Keys           KeyFiles
@@ -37,6 +66,14 @@ type OpenVPNServer struct {
 	TlsKey         string
 	ClientToClient bool
 }
+
+func (ovpn OpenVPNServer) BaseTLSKeyFile() string {
+	return path.Base(ovpn.TlsKey)
+}
+func (ovpn OpenVPNServer) BaseCACertFile() string {
+	return path.Base(ovpn.Keys.CACert)
+}
+
 
 func (ovpn OpenVPNServer) CheckRequiredFields() error {
 	if ovpn.Port == 0 {
@@ -93,3 +130,57 @@ func (ovpn *OpenVPNServer) BuildTLSKey(keysDir string) error {
 	return err
 }
 
+func (ovpn OpenVPNServer) BuildClientConf(targetDir string, clientCert, clientKey string) error {
+	if len(ovpn.Addresses) == 0 {
+		return errors.New("No public addresses")
+	}
+	if err := ovpn.CheckRequiredFields(); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return err
+	}
+	err := os.Link(ovpn.Keys.DiffieHellman, path.Join(targetDir, path.Base(ovpn.Keys.DiffieHellman)))
+	if err != nil {
+		return err
+	}
+	err = os.Link(ovpn.Keys.ServerCert, path.Join(targetDir, path.Base(ovpn.Keys.ServerCert)))
+	if err != nil {
+		return err
+	}
+	err = os.Link(ovpn.Keys.CACert, path.Join(targetDir, path.Base(ovpn.Keys.CACert)))
+	if err != nil {
+		return err
+	}
+	if ovpn.TlsKey != "" {
+		err = os.Link(ovpn.TlsKey, path.Join(targetDir, path.Base(ovpn.TlsKey)))
+		if err != nil {
+			return err
+		}
+	}
+	err = os.Link(clientCert, path.Join(targetDir, path.Base(clientCert)))
+	if err != nil {
+		return err
+	}
+	err = os.Link(clientKey, path.Join(targetDir, path.Base(clientKey)))
+	if err != nil {
+		return err
+	}
+	target := path.Join(targetDir, "client.conf")
+	templ, err := template.New("").Parse(clientConf)
+	if err != nil {
+		return err
+	}
+	f, err := os.Create(target)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	params := struct {OpenVPNServer
+					  ClientCertFile string
+					  ClientKeyFile  string    }{}
+	params.OpenVPNServer = ovpn
+	params.ClientCertFile = path.Base(clientCert)
+	params.ClientKeyFile = path.Base(clientKey)
+	return templ.Execute(f, params)
+}

@@ -19,7 +19,7 @@ func BuildSimpleDebian(server string, targetDir string) error {
 		Server:server,
 		Organization:server,
 		Email:"vpn@" + server}
-	if err = easyRSA.BuildAllRSAKeys(); err != nil {
+	if err = easyRSA.BuildAllServerKeys(); err != nil {
 		return err
 	}
 	ovpn := OpenVPNServer{
