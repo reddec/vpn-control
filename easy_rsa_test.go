@@ -35,6 +35,7 @@ func TestCleanAll(t *testing.T) {
 	}
 }
 func TestBuildCA(t *testing.T) {
+	defer os.RemoveAll(getInstance().KeysDir())
 	TestCleanAll(t)
 	r := getInstance()
 	err := r.BuildKeyCa()
@@ -43,15 +44,22 @@ func TestBuildCA(t *testing.T) {
 	}
 }
 func TestBuildServerKey(t *testing.T) {
-	TestBuildCA(t)
+	defer os.RemoveAll(getInstance().KeysDir())
+	TestCleanAll(t)
 	r := getInstance()
-	err := r.BuildKeyServer()
+	err := r.BuildKeyCa()
+	if err != nil {
+		t.Fatal("Build CA key", err)
+	}
+	TestBuildCA(t)
+	err = r.BuildKeyServer()
 	if err != nil {
 		t.Fatal("Build server key", err)
 	}
 }
 
 func TestBuildDH(t *testing.T) {
+	defer os.RemoveAll(getInstance().KeysDir())
 	TestCleanAll(t)
 	r := getInstance()
 	err := r.BuildDH()
