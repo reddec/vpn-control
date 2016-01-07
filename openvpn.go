@@ -116,7 +116,7 @@ func (ovpn OpenVPNServer) RemoveStaticIP(client string) error {
 	if err != nil {
 		return err
 	}
-	items = delete(items, client)
+	delete(items, client)
 	f, err := os.Create(ovpn.PersistIPFile)
 	if err != nil {
 		return err
