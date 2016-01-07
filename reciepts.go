@@ -30,7 +30,7 @@ func BuildSimpleDebian(server string, targetDir string) (EasyRSA, OpenVPNServer,
 	if err != nil {
 		return EasyRSA{}, OpenVPNServer{}, err
 	}
-	easyRSA := DefaultEasyRSA()
+	easyRSA := DefaultEasyRSA(server, targetDir)
 	if err = easyRSA.BuildAllServerKeys(); err != nil {
 		return easyRSA, OpenVPNServer{}, err
 	}
