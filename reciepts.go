@@ -9,15 +9,9 @@ import (
 	"io"
 )
 
-// Create server configuration with defaults for DEBIAN systems
-// Generates config into targetDir for specified server
-func BuildSimpleDebian(server string, targetDir string) (EasyRSA, OpenVPNServer, error) {
-	keys := path.Join(targetDir, "keys")
-	err := os.MkdirAll(keys, 0755)
-	if err != nil {
-		return EasyRSA{}, OpenVPNServer{}, err
-	}
-	easyRSA := EasyRSA{KeyDir:keys,
+// Get default Easy-rsa instance
+func DefaultEasyRSA(server, keyDir string) EasyRSA {
+	return EasyRSA{KeyDir:keyDir,
 		KeySize:2048,
 		CountryCode:"HE",
 		City:"OutOfControl",
@@ -26,6 +20,17 @@ func BuildSimpleDebian(server string, targetDir string) (EasyRSA, OpenVPNServer,
 		Server:server,
 		Organization:server,
 		Email:"vpn@" + server}
+}
+
+// Create server configuration with defaults for DEBIAN systems
+// Generates config into targetDir for specified server
+func BuildSimpleDebian(server string, targetDir string) (EasyRSA, OpenVPNServer, error) {
+	keys := path.Join(targetDir, "keys")
+	err := os.MkdirAll(keys, 0755)
+	if err != nil {
+		return EasyRSA{}, OpenVPNServer{}, err
+	}
+	easyRSA := DefaultEasyRSA()
 	if err = easyRSA.BuildAllServerKeys(); err != nil {
 		return easyRSA, OpenVPNServer{}, err
 	}
