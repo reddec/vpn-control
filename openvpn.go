@@ -87,7 +87,7 @@ func (ovpn OpenVPNServer) AddStaticIP(client string, ip string) error {
 		return err
 	}
 	defer f.Close()
-	if _, err = f.WriteString(client + "," + ip); err != nil {
+	if _, err = f.WriteString(client + "," + ip + "\n"); err != nil {
 		return err
 	}
 	return nil
@@ -108,6 +108,26 @@ func (ovpn OpenVPNServer) ListStaticIP() (map[string]string, error) {
 		}
 	}
 	return ips, nil
+}
+
+// Read, parse, exclude client and save PersistIPFile
+func (ovpn OpenVPNServer) RemoveStaticIP(client string) error {
+	items, err := ovpn.ListStaticIP()
+	if err != nil {
+		return err
+	}
+	items = delete(items, client)
+	f, err := os.Create(ovpn.PersistIPFile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	for klient, ip := range items {
+		if _, err = f.WriteString(klient + "," + ip + "\n"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Check required parameters like port, protocol and others
